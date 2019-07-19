@@ -386,22 +386,24 @@ class ProfileBuilder extends Component {
   }
 
   /**
-   * If a save occurred in the SectionEditor, the user may have changed the slug/title. This callback is responsible for
+   * If a save occurred in an Editor, the user may have changed the slug/title. This callback is responsible for
    * updating the tree labels accordingly.
    */
-  reportSave(id, newValue, type) {
+  reportSave(type, id, newValue, field) {
     const {nodes} = this.state;
     const {localeDefault} = this.props;
     const node = this.locateNode.bind(this)(type, id);
     // Update the label based on the new value.
     if (node) {
-      const defCon = node.data.content.find(c => c.lang === localeDefault);
-      if (defCon) {
-        const prop = type === "section" ? "title" : "label";
-        defCon[prop] = newValue;
+      if (field === "slug") {
+        node.data.slug = newValue;
       }
-      // todo: determine if this could be merged with formatTreeVariables
-      node.label = this.formatLabel.bind(this)(newValue);
+      else {
+        const defCon = node.data.content.find(c => c.lang === localeDefault);
+        if (defCon) defCon[field] = newValue;
+        // todo: determine if this could be merged with formatTreeVariables
+        node.label = this.formatLabel.bind(this)(newValue);
+      }
     }
     this.setState({nodes});
   }
@@ -681,6 +683,7 @@ class ProfileBuilder extends Component {
               >
                 <Header
                   profileID={currentNode.itemType === "profile" ? currentNode.data.id : null}
+                  sectionID={currentNode.itemType === "section" ? currentNode.data.id : null}
                   localeDefault={localeDefault}
                   title={currentNode.label}
                   parentTitle={currentNode.itemType !== "profile" &&

@@ -112,8 +112,7 @@ class SectionEditor extends Component {
   onSave(minData) {
     const {localeDefault} = this.props;
     const defCon = minData.content.find(c => c.lang === localeDefault);
-    const title = defCon && defCon.title ? defCon.title : minData.slug;
-    if (this.props.reportSave) this.props.reportSave(minData.id, title, "section");
+    if (defCon && defCon.title) this.props.reportSave("section", minData.id, defCon.title, "title"); 
   }
 
   onMove() {

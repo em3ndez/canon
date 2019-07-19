@@ -20,7 +20,7 @@ export default class Header extends Component {
   }
 
   componentDidUpdate(prevProps) {
-    if (prevProps.profileID !== this.props.profileID) {
+    if (prevProps.profileID !== this.props.profileID || prevProps.sectionID !== this.props.sectionID) {
       const {title, slug} = this.props;
       this.setState({title, slug});   
     }
@@ -40,14 +40,26 @@ export default class Header extends Component {
       };
       axios.post("/api/cms/profile/update", payload).then(resp => {
         if (resp.status === 200) {
-          if (this.props.reportSave) this.props.reportSave(profileID, title, "profile");
+          if (this.props.reportSave) this.props.reportSave("profile", profileID, title, "label");
         }
       });
     }
   }
 
-  renameSectionSlug(value) {
-    console.log(value);
+  renameSectionSlug() {
+    const {sectionID} = this.props;
+    const {slug} = this.state;
+    if (sectionID) {
+      const payload = {
+        id: sectionID,
+        slug
+      };
+      axios.post("/api/cms/section/update", payload).then(resp => {
+        if (resp.status === 200) {
+          if (this.props.reportSave) this.props.reportSave("section", sectionID, slug, "slug");
+        }
+      });
+    }
   }
 
   renameSection() {
@@ -94,6 +106,7 @@ export default class Header extends Component {
               <EditableText
                 value={title}
                 onChange={title => this.setState({title})}
+                selectAllOnFocus={true}
                 confirmOnEnterKey={true}
                 onConfirm={this.nicknameProfile.bind(this)}
               />
@@ -135,6 +148,8 @@ export default class Header extends Component {
               <span className="cms-header-link-slug">
                 <EditableText
                   value={slug}
+                  onChange={slug => this.setState({slug})}
+                  selectAllOnFocus={true}
                   confirmOnEnterKey={true}
                   onConfirm={this.renameSectionSlug.bind(this)}
                 />
