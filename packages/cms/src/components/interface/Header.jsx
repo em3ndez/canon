@@ -40,7 +40,7 @@ export default class Header extends Component {
       };
       axios.post("/api/cms/profile/update", payload).then(resp => {
         if (resp.status === 200) {
-          console.log("yeah");
+          if (this.props.reportSave) this.props.reportSave(profileID, title, "profile");
         }
       });
     }
