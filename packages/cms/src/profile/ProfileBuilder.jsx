@@ -74,28 +74,33 @@ class ProfileBuilder extends Component {
     const {profiles} = this.state;
     const {localeDefault} = this.props;
     const {stripHTML} = this.context.formatters[localeDefault];
-    const nodes = profiles.map(p => ({
-      id: `profile${p.id}`,
-      hasCaret: true,
-      label: p.meta.length > 0 ? p.meta.map(d => d.slug).join("_") : "Add Dimensions",
-      itemType: "profile",
-      masterPid: p.id,
-      masterMeta: p.meta,
-      data: p,
-      childNodes: p.sections.map(t => {
-        const defCon = t.content.find(c => c.lang === localeDefault);
-        const title = defCon && defCon.title ? defCon.title : t.slug;
-        return {
-          id: `section${t.id}`,
-          hasCaret: false,
-          label: this.decode(stripHTML(title)),
-          itemType: "section",
-          masterPid: p.id,
-          masterMeta: p.meta,
-          data: t
-        };
-      })
-    }));
+    const nodes = profiles.map(p => {
+      let title = p.meta.length > 0 ? p.meta.map(d => d.slug).join("_") : "Add Dimensions";
+      const defCon = p.content.find(c => c.lang === localeDefault);
+      if (defCon && defCon.label) title = defCon.label;
+      return {
+        id: `profile${p.id}`,
+        hasCaret: true,
+        label: title,
+        itemType: "profile",
+        masterPid: p.id,
+        masterMeta: p.meta,
+        data: p,
+        childNodes: p.sections.map(t => {
+          const defCon = t.content.find(c => c.lang === localeDefault);
+          const title = defCon && defCon.title ? defCon.title : t.slug;
+          return {
+            id: `section${t.id}`,
+            hasCaret: false,
+            label: this.decode(stripHTML(title)),
+            itemType: "section",
+            masterPid: p.id,
+            masterMeta: p.meta,
+            data: t
+          };
+        })
+      };
+    });
     if (!openNode) {
       const {profile, section} = this.props.pathObj;
       if (section) {
@@ -498,7 +503,10 @@ class ProfileBuilder extends Component {
     const {currentPid, nodes} = this.state;
     const {localeDefault} = this.props;
     const p = this.locateProfileNodeByPid(currentPid);
-    p.label = p.masterMeta.length > 0 ? p.masterMeta.map(d => d.slug).join("_") : "Add Dimensions";
+    let title = p.masterMeta.length > 0 ? p.masterMeta.map(d => d.slug).join("_") : "Add Dimensions";
+    const defCon = p.data.content.find(c => c.lang === localeDefault);
+    if (defCon && defCon.label) title = defCon.label;
+    p.label = title;
     p.childNodes = p.childNodes.map(t => {
       const defCon = t.data.content.find(c => c.lang === localeDefault);
       const title = defCon && defCon.title ? defCon.title : t.data.slug;
@@ -669,6 +677,8 @@ class ProfileBuilder extends Component {
                 reportSave={this.reportSave.bind(this)}
               >
                 <Header
+                  profileID={currentNode.itemType === "profile" ? currentNode.data.id : null}
+                  localeDefault={localeDefault}
                   title={currentNode.label}
                   parentTitle={currentNode.itemType !== "profile" &&
                     currentNode.parent.label

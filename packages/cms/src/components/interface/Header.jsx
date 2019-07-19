@@ -1,3 +1,4 @@
+import axios from "axios";
 import React, {Component} from "react";
 import {EditableText, Icon} from "@blueprintjs/core";
 import Button from "../fields/Button";
@@ -5,8 +6,44 @@ import "./Header.css";
 
 export default class Header extends Component {
 
-  nicknameProfile(value) {
-    console.log(value);
+  constructor(props) {
+    super(props);
+    this.state = {
+      title: null,
+      slug: null
+    };
+  }
+
+  componentDidMount() {
+    const {title, slug} = this.props;
+    this.setState({title, slug});
+  }
+
+  componentDidUpdate(prevProps) {
+    if (prevProps.profileID !== this.props.profileID) {
+      const {title, slug} = this.props;
+      this.setState({title, slug});   
+    }
+  }
+
+  nicknameProfile() {
+    const {profileID, localeDefault} = this.props;
+    const {title} = this.state;
+    if (profileID) {
+      const payload = {
+        id: profileID,
+        content: [{
+          id: profileID,
+          lang: localeDefault,
+          label: title
+        }]
+      };
+      axios.post("/api/cms/profile/update", payload).then(resp => {
+        if (resp.status === 200) {
+          console.log("yeah");
+        }
+      });
+    }
   }
 
   renameSectionSlug(value) {
@@ -20,10 +57,13 @@ export default class Header extends Component {
   render() {
     const {
       parentTitle,
-      dimensions,
+      dimensions
+    } = this.props;
+
+    const {
       title,
       slug
-    } = this.props;
+    } = this.state;
 
     let domain = this.props;
     if (typeof domain !== "undefined" && typeof window !== "undefined" && window.document.location.origin) {
@@ -52,7 +92,8 @@ export default class Header extends Component {
             // profile
             ? <span className="cms-header-title-main">
               <EditableText
-                defaultValue={title}
+                value={title}
+                onChange={title => this.setState({title})}
                 confirmOnEnterKey={true}
                 onConfirm={this.nicknameProfile.bind(this)}
               />
@@ -93,7 +134,7 @@ export default class Header extends Component {
             ? <React.Fragment>#
               <span className="cms-header-link-slug">
                 <EditableText
-                  defaultValue={slug}
+                  value={slug}
                   confirmOnEnterKey={true}
                   onConfirm={this.renameSectionSlug.bind(this)}
                 />
