@@ -630,7 +630,7 @@ class ProfileBuilder extends Component {
 
   render() {
 
-    const {nodes, currentNode, variablesHash, currentPid, previews, cubeData, nodeToDelete, selectors} = this.state;
+    const {nodes, currentNode, variablesHash, currentPid, previews, cubeData, nodeToDelete, selectors, query} = this.state;
     const {locale, localeDefault} = this.props;
 
     if (!nodes) return null;
@@ -643,6 +643,12 @@ class ProfileBuilder extends Component {
     // get current node order; used for showing hero section in section layout list
     let currNodeOrder;
     if (currentNode && currentNode.data) currNodeOrder = currentNode.data.ordering;
+
+    let rawSectionTitle = null;
+    if (currentNode && currentNode.itemType === "section") {
+      const defCon = currentNode.data.content.find(c => c.lang === localeDefault);
+      if (defCon) rawSectionTitle = defCon.title;
+    }
 
     return (
       <React.Fragment>
@@ -682,16 +688,35 @@ class ProfileBuilder extends Component {
                 reportSave={this.reportSave.bind(this)}
               >
                 <Header
+                  /*
+                  node={currentNode}
+                  locale={locale}
+                  localeDefault={localeDefault}
+                  dimensions={previews}
+                  reportSave={this.reportSave.bind(this)}
+                  variables={variables}
+                  query={query}
+                  selectors={selectors}
+                  */
+                  
+
+                  
                   profileID={currentNode.itemType === "profile" ? currentNode.data.id : null}
                   sectionID={currentNode.itemType === "section" ? currentNode.data.id : null}
+                  locale={locale}
                   localeDefault={localeDefault}
                   title={currentNode.label}
+                  rawSectionTitle={rawSectionTitle}
                   parentTitle={currentNode.itemType !== "profile" &&
                     currentNode.parent.label
                   }
                   dimensions={previews}
                   slug={currentNode.data.slug}
                   reportSave={this.reportSave.bind(this)}
+                  variables={variables}
+                  query={query}
+                  selectors={selectors}
+                  
                 />
 
                 <DimensionBuilder

@@ -48,14 +48,9 @@ class SectionEditor extends Component {
     });
   }
 
-  // Strip leading/trailing spaces and URL-breaking characters
-  urlPrep(str) {
-    return str.replace(/^\s+|\s+$/gm, "").replace(/[^a-zA-ZÀ-ž0-9-\ _]/g, "");
-  }
-
   changeField(field, save, e) {
     const {minData} = this.state;
-    minData[field] = field === "slug" ? this.urlPrep(e.target.value) : e.target.value;
+    minData[field] = e.target.value;
     save ? this.setState({minData}, this.save.bind(this)) : this.setState({minData});
   }
 
@@ -97,7 +92,6 @@ class SectionEditor extends Component {
     const {minData} = this.state;
     const payload = {
       id: minData.id,
-      slug: minData.slug,
       type: minData.type,
       allowed: minData.allowed,
       sticky: minData.sticky
@@ -176,45 +170,10 @@ class SectionEditor extends Component {
         {/* TODO: convert to fields */}
         <Deck
           title="Section metadata"
-          subtitle="Title"
           entity="meta"
-          cards={[
-            <TextCard
-              key="title-card"
-              item={minData}
-              locale={locale}
-              localeDefault={localeDefault}
-              fields={["title"]}
-              query={query}
-              onSave={this.onSave.bind(this)}
-              type="section"
-              selectors={minData.allSelectors.map(s => Object.assign({}, s))}
-              variables={variables[localeDefault]}
-              hideAllowed={true}
-            />
-          ]}
         >
           {/* current section options */}
           <div className="cms-editor-header">
-            {/* change slug */}
-            <TextButtonGroup
-              context="cms"
-              inputProps={{
-                label: "Slug",
-                labelHidden: true,
-                fontSize: "xs",
-                inline: true,
-                context: "cms",
-                value: minData.slug,
-                onChange: this.changeField.bind(this, "slug", false)
-              }}
-              buttonProps={{
-                children: "Rename slug",
-                fontSize: "xs",
-                context: "cms",
-                onClick: this.save.bind(this)
-              }}
-            />
 
             {/* visibility select */}
             <Select

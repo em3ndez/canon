@@ -1,29 +1,41 @@
 import axios from "axios";
 import React, {Component} from "react";
-import {EditableText, Icon} from "@blueprintjs/core";
+import {EditableText, Icon, Dialog} from "@blueprintjs/core";
 import Button from "../fields/Button";
+import FooterButtons from "../editors/components/FooterButtons";
+import TextEditor from "../editors/TextEditor";
+import stripHTML from "../../utils/formatters/stripHTML";
+import varSwapRecursive from "../../utils/varSwapRecursive";
+import LocaleName from "../cards/components/LocaleName";
+import PropTypes from "prop-types";
 import "./Header.css";
 
-export default class Header extends Component {
+class Header extends Component {
 
   constructor(props) {
     super(props);
     this.state = {
       title: null,
-      slug: null
+      slug: null,
+      rawSectionTitle: null
     };
   }
 
   componentDidMount() {
-    const {title, slug} = this.props;
-    this.setState({title, slug});
+    const {title, slug, rawSectionTitle} = this.props;
+    this.setState({title, slug, rawSectionTitle});
   }
 
   componentDidUpdate(prevProps) {
     if (prevProps.profileID !== this.props.profileID || prevProps.sectionID !== this.props.sectionID) {
-      const {title, slug} = this.props;
-      this.setState({title, slug});   
+      const {title, slug, rawSectionTitle} = this.props;
+      this.setState({title, slug, rawSectionTitle});   
     }
+  }
+
+  // Strip leading/trailing spaces and URL-breaking characters
+  urlPrep(str) {
+    return str.replace(/^\s+|\s+$/gm, "").replace(/[^a-zA-ZÀ-ž0-9-\ _]/g, "");
   }
 
   nicknameProfile() {
@@ -69,13 +81,24 @@ export default class Header extends Component {
   render() {
     const {
       parentTitle,
-      dimensions
+      dimensions,
+      variables,
+      query,
+      selectors,
+      localeDefault,
+      locale
     } = this.props;
 
     const {
       title,
-      slug
+      slug,
+      rawSectionTitle,
+      isOpen,
+      isDirty,
+      alertObj
     } = this.state;
+
+    const formatters = this.context.formatters[localeDefault];
 
     let domain = this.props;
     if (typeof domain !== "undefined" && typeof window !== "undefined" && window.document.location.origin) {
@@ -96,6 +119,13 @@ export default class Header extends Component {
       .join("/") // now it's a URL
     }${typeof slug !== "undefined" ? `#${slug}` : ""}`;
 
+    let prettySectionTitle = "";
+    if (rawSectionTitle) {
+      prettySectionTitle = stripHTML(rawSectionTitle);
+      const theseVariables = variables[localeDefault];
+      if (theseVariables) prettySectionTitle = varSwapRecursive({prettySectionTitle, selectors}, formatters, theseVariables, query).prettySectionTitle;
+    }
+
     return (
       <header className="cms-header">
         <h1 className="cms-header-title u-font-lg">
@@ -115,9 +145,51 @@ export default class Header extends Component {
 
             // section
             : <React.Fragment>
+              <Dialog
+                isOpen={isOpen}
+                /*onClose={this.maybeCloseEditorWithoutSaving.bind(this)}*/
+                title="Section Title Editor"
+                usePortal={false}
+              >
+                <div className="bp3-dialog-body">
+
+                  <div className="cms-dialog-locale-group">
+                    <div className="cms-dialog-locale-container">
+                      {locale &&
+                        <LocaleName locale={localeDefault} />
+                      }
+                      <TextEditor 
+                        contentType="test" 
+                        /* markAsDirty={this.markAsDirty.bind(this)} */
+                        data={minData} 
+                        locale={localeDefault} 
+                        variables={variables} 
+                        fields={["title"]} 
+                      />
+                    </div>
+
+                    {locale &&
+                      <div className="cms-dialog-locale-container">
+                        <LocaleName locale={locale} />
+                        <TextEditor 
+                          contentType="test2" 
+                          /* markAsDirty={this.markAsDirty.bind(this)} */
+                          data={minData} 
+                          locale={locale} 
+                          variables={variables} 
+                          fields={["title"]} />
+                      </div>
+                    }
+                  </div>
+                </div>
+
+                <FooterButtons
+                  onSave={this.save.bind(this)}
+                />
+              </Dialog>
               <span className="cms-header-title-parent">{parentTitle} </span>
               <span className="cms-header-title-main">
-                {title}
+                {prettySectionTitle}
                 <Button className="cms-header-title-button u-font-xs" context="cms" onClick={this.renameSection.bind(this)} icon="cog" iconOnly>
                   rename section
                 </Button>
@@ -143,12 +215,12 @@ export default class Header extends Component {
           }
 
           {/* edit slug button can't be part of link */}
-          {slug && dimensions && dimensions.length
+          {(slug || slug === "") && dimensions && dimensions.length
             ? <React.Fragment>#
               <span className="cms-header-link-slug">
                 <EditableText
                   value={slug}
-                  onChange={slug => this.setState({slug})}
+                  onChange={slug => this.setState({slug: this.urlPrep(slug)})}
                   selectAllOnFocus={true}
                   confirmOnEnterKey={true}
                   onConfirm={this.renameSectionSlug.bind(this)}
@@ -162,3 +234,9 @@ export default class Header extends Component {
     );
   }
 }
+
+Header.contextTypes = {
+  formatters: PropTypes.object
+};
+
+export default Header;
