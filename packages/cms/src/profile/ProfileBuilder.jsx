@@ -688,6 +688,7 @@ class ProfileBuilder extends Component {
                 reportSave={this.reportSave.bind(this)}
               >
                 <Header
+                  
                   /*
                   node={currentNode}
                   locale={locale}

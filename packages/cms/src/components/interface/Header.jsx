@@ -17,20 +17,28 @@ class Header extends Component {
     this.state = {
       title: null,
       slug: null,
-      rawSectionTitle: null
+      rawSectionTitle: null,
+      sectionTitleObject: {}
     };
   }
 
   componentDidMount() {
-    const {title, slug, rawSectionTitle} = this.props;
-    this.setState({title, slug, rawSectionTitle});
+    this.populate.bind(this)();
   }
 
   componentDidUpdate(prevProps) {
     if (prevProps.profileID !== this.props.profileID || prevProps.sectionID !== this.props.sectionID) {
-      const {title, slug, rawSectionTitle} = this.props;
-      this.setState({title, slug, rawSectionTitle});   
+      this.populate.bind(this)();  
     }
+  }
+
+  populate() {
+    const {title, slug, rawSectionTitle, localeDefault, locale} = this.props;
+    const sectionTitleObject = {content: [
+      {lang: localeDefault, title: rawSectionTitle},
+      {lang: locale, title: "test for now"}
+    ]};
+    this.setState({title, slug, rawSectionTitle, sectionTitleObject});
   }
 
   // Strip leading/trailing spaces and URL-breaking characters
@@ -78,6 +86,11 @@ class Header extends Component {
     console.log("button clicked");
   }
 
+  save() {
+    const {sectionTitleObject} = this.state;
+    console.log(sectionTitleObject);
+  }
+
   render() {
     const {
       parentTitle,
@@ -95,7 +108,8 @@ class Header extends Component {
       rawSectionTitle,
       isOpen,
       isDirty,
-      alertObj
+      alertObj,
+      sectionTitleObject
     } = this.state;
 
     const formatters = this.context.formatters[localeDefault];
@@ -161,7 +175,7 @@ class Header extends Component {
                       <TextEditor 
                         contentType="test" 
                         /* markAsDirty={this.markAsDirty.bind(this)} */
-                        data={minData} 
+                        data={sectionTitleObject} 
                         locale={localeDefault} 
                         variables={variables} 
                         fields={["title"]} 
@@ -174,7 +188,7 @@ class Header extends Component {
                         <TextEditor 
                           contentType="test2" 
                           /* markAsDirty={this.markAsDirty.bind(this)} */
-                          data={minData} 
+                          data={sectionTitleObject} 
                           locale={locale} 
                           variables={variables} 
                           fields={["title"]} />
@@ -190,7 +204,7 @@ class Header extends Component {
               <span className="cms-header-title-parent">{parentTitle} </span>
               <span className="cms-header-title-main">
                 {prettySectionTitle}
-                <Button className="cms-header-title-button u-font-xs" context="cms" onClick={this.renameSection.bind(this)} icon="cog" iconOnly>
+                <Button className="cms-header-title-button u-font-xs" context="cms" onClick={() => this.setState({isOpen: !this.state.isOpen})} icon="cog" iconOnly>
                   rename section
                 </Button>
               </span>
