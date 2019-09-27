@@ -548,11 +548,14 @@ class ProfileBuilder extends Component {
         });
       }
       axios.get(url).then(def => {
-        const defObj = {[localeDefault]: def.data};
+        const defObj = {[localeDefault]: deepClone(def.data)};
         if (!variablesHash[currentPid]) {
           variablesHash[currentPid] = defObj;
         }
         else {
+          if (!variablesHash[currentPid][localeDefault]) {
+            variablesHash[currentPid][localeDefault] = deepClone(def.data);
+          }
           // If query.generator was specified, then we are here because an
           // onSave event Fired. Though we eventually do a nestedObjectAssign
           // (See below) this is not sufficient if the user DELETED any keys.
@@ -562,12 +565,17 @@ class ProfileBuilder extends Component {
             const theseVars = variablesHash[currentPid][localeDefault];
             const current = theseVars._genStatus[query.generator];
             const incoming = defObj[localeDefault]._genStatus[query.generator];
-            Object.keys(current).forEach(key => {
-              if (current[key] && !incoming.key) {
-                delete theseVars[key];
-                delete current[key];
-              }
-            });
+            if (!current) {
+              theseVars._genStatus[query.generator] = incoming;
+            }
+            else {
+              Object.keys(current).forEach(key => {
+                if (current[key] && !incoming.key) {
+                  delete theseVars[key];
+                  delete current[key];
+                }
+              });
+            }
           }
           // Further, for any given _genStatus or _matStatus that is incoming,
           // if the incoming version has no error, we must CLEAR the error from
@@ -582,6 +590,7 @@ class ProfileBuilder extends Component {
             });
           }
           variablesHash[currentPid] = nestedObjectAssign(variablesHash[currentPid], defObj);
+          this.setState({variablesHash}, maybeCallback);
         }
         if (locale) {
           let lurl = `/api/variables/${currentPid}/?locale=${locale}`;
@@ -594,29 +603,42 @@ class ProfileBuilder extends Component {
             });
           }
           axios.get(lurl).then(loc => {
-            const locObj = {[locale]: loc.data};
-            if (query && query.generator) {
-              const theseVars = variablesHash[currentPid][locale];
-              const current = theseVars._genStatus[query.generator];
-              const incoming = locObj[locale]._genStatus[query.generator];
-              Object.keys(current).forEach(key => {
-                if (current[key] && !incoming.key) {
-                  delete theseVars[key];
-                  delete current[key];
+            const locObj = {[locale]: deepClone(loc.data)};
+            if (!variablesHash[currentPid]) {
+              variablesHash[currentPid] = locObj;
+            }
+            else {
+              if (!variablesHash[currentPid][locale]) {
+                variablesHash[currentPid][locale] = deepClone(loc.data);
+              }
+              if (query && query.generator) {
+                const theseVars = variablesHash[currentPid][locale];
+                const current = theseVars._genStatus[query.generator];
+                const incoming = locObj[locale]._genStatus[query.generator];
+                if (!current) {
+                  theseVars._genStatus[query.generator] = incoming;
                 }
-              });
-            }
-            if (variablesHash[currentPid][locale]) {
-              ["_genStatus", "_matStatus"].forEach(status => {
-                const incGens = locObj[locale][status];
-                const curGens = variablesHash[currentPid][locale][status];
-                Object.keys(incGens).forEach(id => {
-                  if (!incGens[id].error && curGens[id]) delete curGens[id].error;
+                else {
+                  Object.keys(current).forEach(key => {
+                    if (current[key] && !incoming.key) {
+                      delete theseVars[key];
+                      delete current[key];
+                    }
+                  });
+                }
+              }
+              if (variablesHash[currentPid][locale]) {
+                ["_genStatus", "_matStatus"].forEach(status => {
+                  const incGens = locObj[locale][status];
+                  const curGens = variablesHash[currentPid][locale][status];
+                  Object.keys(incGens).forEach(id => {
+                    if (!incGens[id].error && curGens[id]) delete curGens[id].error;
+                  });
                 });
-              });
+              }
+              variablesHash[currentPid] = nestedObjectAssign(variablesHash[currentPid], locObj);
+              this.setState({variablesHash}, maybeCallback);
             }
-            variablesHash[currentPid] = nestedObjectAssign(variablesHash[currentPid], locObj);
-            this.setState({variablesHash}, maybeCallback);
           });
         }
         else {
@@ -700,7 +722,6 @@ class ProfileBuilder extends Component {
                 locale={locale}
                 localeDefault={localeDefault}
                 previews={previews}
-                onSetVariables={this.onSetVariables.bind(this)}
                 variables={variables}
                 selectors={selectors}
                 order={currNodeOrder}

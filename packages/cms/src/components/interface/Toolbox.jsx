@@ -47,7 +47,16 @@ export default class Toolbox extends Component {
         const minData = resp.data;
         const callback = () => {
           this.updateSelectors.bind(this)();
-          this.fetchVariables.bind(this)(true, query);
+          // If query is set, the user has saved a single generator and we should load just that one.
+          if (query) {
+            this.fetchVariables.bind(this)(true, query);  
+          }
+          // Otherwise, this is a first load, so run the full list of generators (one a time) to be returned async.
+          else {
+            minData.generators.forEach(g => {
+              this.fetchVariables.bind(this)(true, {generator: g.id});     
+            });
+          }
         };
         this.setState({minData, recompiling: true}, callback);
       });
@@ -72,7 +81,6 @@ export default class Toolbox extends Component {
     payload.ordering = minData[propMap[type]].length;
     axios.post(`/api/cms/${type}/new`, payload).then(resp => {
       if (resp.status === 200) {
-        const maybeFetch = type === "formatter" ? null : this.fetchVariables.bind(this, true);
         // Selectors, unlike the rest of the elements, actually do pass down their entire
         // content to the Card (the others are simply given an id and load the data themselves)
         if (type === "selector") {
@@ -93,7 +101,7 @@ export default class Toolbox extends Component {
           forceType = type;
           forceOpen = true;
         }
-        this.setState({minData, forceID, forceType, forceOpen}, maybeFetch);
+        this.setState({minData, forceID, forceType, forceOpen});
       }
     });
   }
