@@ -1,4 +1,5 @@
 import React, {Component} from "react";
+import "./QuillWrapper.css";
 
 let Quill;
 
@@ -8,6 +9,17 @@ if (typeof window !== "undefined") {
 }
 
 class QuillWrapper extends Component {
+
+  constructor(props) {
+    super(props);
+    this.state = {
+      toolbarVisible: false
+    };
+  }
+
+  toggleToolbar() {
+    this.setState({toolbarVisible: !this.state.toolbarVisible});
+  }
 
   render() {
     if (Quill) {
@@ -26,13 +38,16 @@ class QuillWrapper extends Component {
           }
         }
       };
-      return <Quill
-        theme="snow"
-        modules={modules}
-        onChangeSelection={range => range ? this.setState({currentRange: range}) : null}
-        ref={c => this.quillRef = c}
-        {...this.props}
-      />;
+      return <div className={this.state.toolbarVisible ? "toolbar-visible" : "toolbar-hidden"}>
+        <button onClick={this.toggleToolbar.bind(this)}>Button</button>
+        <Quill
+          theme="snow"
+          modules={modules}
+          onChangeSelection={range => range ? this.setState({currentRange: range}) : null}
+          ref={c => this.quillRef = c}
+          {...this.props}
+        />
+      </div>;
     }
     return null;
   }
