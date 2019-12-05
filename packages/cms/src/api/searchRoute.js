@@ -1,5 +1,7 @@
 const sequelize = require("sequelize");
 const yn = require("yn");
+const d3Array = require("d3-array");
+const {strip} = require("d3plus-text");
 
 const verbose = yn(process.env.CANON_CMS_LOGGING);
 let Base58, flickr, sharp, storage;
@@ -152,6 +154,78 @@ module.exports = function(app) {
     const {id, locale} = req.body;
     const update = await db.search_content.update(req.body, {where: {id, locale}}).catch(catcher);
     res.json(update);
+  });
+
+  app.get("/api/newsearch", async(req, res) => {
+
+    let {limit = "10"} = req.query;
+    limit = parseInt(limit, 10);
+
+    const locale = req.query.locale || process.env.CANON_LANGUAGE_DEFAULT || "en";
+
+    const index = app.settings.cache.searchIndex.index[locale];
+    const rows = app.settings.cache.searchIndex.rows[locale];
+
+    const {id, q, dimension, levels} = req.query;
+
+    let results = [];
+
+    if (id) {
+      let data = d3Array.merge(id.split(",").map(x => Object.values(rows).filter(d => d.id === x)));
+      if (dimension) data = data.filter(d => d.dimension === dimension);
+      if (levels) data = data.filter(d => levels.split(",").includes(d.hierarchy));
+      data = data.sort((a, b) => b.zvalue - a.zvalue);
+      results = data.slice(0, limit);
+    }
+    else if (!q) {
+      let data = Object.values(rows);
+      if (dimension) data = data.filter(d => d.dimension === dimension);
+      if (levels) data = data.filter(d => levels.split(",").includes(d.hierarchy));
+      data = data.sort((a, b) => b.zvalue - a.zvalue);
+      results = data.slice(0, limit);
+    }
+    else {
+      const query = strip(q);
+      let searchQuery = query
+        .replace(/([A-z]{2,})/g, txt => `+${txt}`)
+        .replace(/(.)$/g, txt => `${txt}*`);
+
+      if (dimension) searchQuery = `${dimension.split(" ").map(d => `+dimension:${d}`).join(" ")} ${searchQuery}`;                    
+      if (levels) {
+        // TODO: this splitting of multiple hierarchies doesn't work
+        levels.split(",").forEach(hierarchy => {
+          searchQuery = `${hierarchy.split(" ").map(d => `+hierarchy:${d}`).join(" ")} ${searchQuery}`;
+        });
+      }
+
+      const searchResults = index.search(searchQuery)
+        .map(d => {
+
+          const data = rows[d.ref];
+          const keywords = data.keywords || [];
+          const name = strip(data.name);
+          const zvalue = data.zvalue;
+          const zscore = zvalue * 0.15;
+
+          let score = d.score;
+          const diffMod = query.length / name.length;
+          if (name === query || keywords.includes(query)) score = 1000000;
+          else if (name.startsWith(query)) score *= 20 * diffMod;
+          else if (query.startsWith(name.slice(0, 10))) score *= 10 * diffMod;
+          else if (query.startsWith(name.slice(0, 5))) score *= 5 * diffMod;
+          data.score = score * 7.5 + zscore * 3.1;
+          return data;
+
+        });
+
+      results = searchResults.sort((a, b) => b.score - a.score).slice(0, limit);        
+    }
+
+    return res.json({
+      results,
+      query: {dimension, id, limit, q}
+    });
+
   });
 
   app.get("/api/search", async(req, res) => {
