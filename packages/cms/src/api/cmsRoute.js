@@ -169,6 +169,12 @@ const parentOrderingTables = {
   storysection_visualization: "storysection_id"
 };
 
+const allParents = {
+  generator: "profile_id",
+  selector: "profile_id", 
+  ...parentOrderingTables
+}
+
 const sorter = (a, b) => a.ordering - b.ordering;
 
 /**
@@ -310,7 +316,7 @@ const duplicateSection = async(db, oldSection, pid, selectorLookup) => {
  * This function allows these CRUD operations to easily return this list at the end of their execution
  */
 const fullFetch = async(db, type, parent_id) => {     // eslint-disable-line camelcase
-  if (type === "profiles") {
+  if (type === "profile") {
     let profiles = await db.profile.findAll(profileReqFull).catch(catcher);
     profiles = sortProfileTree(db, profiles);
     const sectionTypes = getSectionTypes();
@@ -324,7 +330,7 @@ const fullFetch = async(db, type, parent_id) => {     // eslint-disable-line cam
     });
     return profiles;
   }
-  else if (type === "sections") {
+  else if (type === "section") {
     const reqObj = Object.assign({}, sectionReqFull, {where: {profile_id: parent_id}, order: [["ordering", "ASC"]]});
     let sections = await db.section.findAll(reqObj).catch(catcher);
     sections = sections.map(section => {
@@ -335,7 +341,7 @@ const fullFetch = async(db, type, parent_id) => {     // eslint-disable-line cam
     });
     return sections;
   }
-  else if (type === "stories") {
+  else if (type === "story") {
     let stories = await db.story.findAll(storyReqFull).catch(catcher);
     stories = sortStoryTree(db, stories);
     stories.forEach(story => {
@@ -348,7 +354,7 @@ const fullFetch = async(db, type, parent_id) => {     // eslint-disable-line cam
     });
     return stories;
   }
-  else if (type === "storysections") {
+  else if (type === "storysection") {
     const reqObj = Object.assign({}, storysectionReqFull, {where: {story_id: parent_id}, order: [["ordering", "ASC"]]});
     let storysections = await db.storysection.findAll(reqObj).catch(catcher);
     storysections = storysections.map(storysection => {
@@ -527,7 +533,7 @@ module.exports = function(app) {
   });
 
   app.get("/api/cms/tree", async(req, res) => {
-    const profiles = await fullFetch(db, "profiles");
+    const profiles = await fullFetch(db, "profile");
     return res.json(profiles);
   });
 
@@ -537,7 +543,7 @@ module.exports = function(app) {
   });
 
   app.get("/api/cms/storytree", async(req, res) => {
-    const stories = await fullFetch(db, "stories");
+    const stories = await fullFetch(db, "story");
     return res.json(stories);
   });
 
@@ -569,36 +575,37 @@ module.exports = function(app) {
     
       // Create the metadata object in the top-level table
       const newObj = await db[ref].create(req.body).catch(catcher);
+      // Create a fetch to retrieve all siblings 
+      const reqObj = {where: {
+        [allParents[ref]]: req.body[allParents[ref]],
+        order: [["ordering", "ASC"]]
+      }};
+      let rows = [];
       // For a certain subset of translated tables, we need to also insert a new, corresponding english content row.
       if (contentTables.includes(ref)) {
         const payload = Object.assign({}, req.body, {id: newObj.id, locale: envLoc});
         await db[`${ref}_content`].create(payload).catch(catcher);
-        let reqObj;
-        if (ref === "section") {
-          reqObj = Object.assign({}, sectionReqFull, {where: {id: newObj.id}});
-        }
-        else if (ref === "storysection") {
-          reqObj = Object.assign({}, storysectionReqFull, {where: {id: newObj.id}});
+        
+        if (["profile", "section", "story", "storysection"].includes(ref)) {
+          rows = await fullFetch(db, ref, req.body[allParents[ref]]);
         }
         else {
-          reqObj = {where: {id: newObj.id}, include: {association: "content"}};
+          reqObj.include = {association: "content"};
+          rows = await db[ref].findAll(reqObj).catch(catcher);
         }
-        let fullObj = await db[ref].findOne(reqObj).catch(catcher);
-        fullObj = fullObj.toJSON();
-        if (ref === "section" || ref === "storysection") {
-          fullObj.types = getSectionTypes();
-        }
-        return res.json(fullObj);
+        return res.json({parent_id: req.body[allParents[ref]], newArray: rows});
       }
       else {
         if (ref === "section_selector") {
+          // todo fix this multiget
           let selector = await db.selector.findOne({where: {id: req.body.selector_id}}).catch(catcher);
           selector = selector.toJSON();
           selector.section_selector = newObj.toJSON();
           return res.json(selector);
         }
         else {
-          return res.json(newObj);  
+          rows = await db[ref].findAll(reqObj).catch(catcher);
+          return res.json({parent_id: req.body[allParents[ref]], newArray: rows});
         }
       }
     });
@@ -909,7 +916,7 @@ module.exports = function(app) {
     await db.profile.update({ordering: sequelize.literal("ordering -1")}, {where: {ordering: {[Op.gt]: row.ordering}}}).catch(catcher);
     await db.profile.destroy({where: {id: req.query.id}}).catch(catcher);
     pruneSearch(row.dimension, row.levels, db);
-    const profiles = await fullFetch(db, "profiles");
+    const profiles = await fullFetch(db, "profile");
     return res.json({id: row.id, profiles});
   });
 
@@ -934,7 +941,7 @@ module.exports = function(app) {
     const row = await db.story.findOne({where: {id: req.query.id}}).catch(catcher);
     await db.story.update({ordering: sequelize.literal("ordering -1")}, {where: {ordering: {[Op.gt]: row.ordering}}}).catch(catcher);
     await db.story.destroy({where: {id: req.query.id}}).catch(catcher);
-    const stories = await fullFetch(db, "stories");
+    const stories = await fullFetch(db, "story");
     return res.json({id: row.id, stories});
   });
 
@@ -948,7 +955,7 @@ module.exports = function(app) {
     const row = await db.section.findOne({where: {id: req.query.id}}).catch(catcher);
     await db.section.update({ordering: sequelize.literal("ordering -1")}, {where: {profile_id: row.profile_id, ordering: {[Op.gt]: row.ordering}}}).catch(catcher);
     await db.section.destroy({where: {id: req.query.id}}).catch(catcher);
-    const sections = await fullFetch(db, "sections", row.profile_id);
+    const sections = await fullFetch(db, "section", row.profile_id);
     return res.json({id: row.id, parent_id: row.profile_id, sections});
   });
 
@@ -956,7 +963,7 @@ module.exports = function(app) {
     const row = await db.storysection.findOne({where: {id: req.query.id}}).catch(catcher);
     await db.storysection.update({ordering: sequelize.literal("ordering -1")}, {where: {story_id: row.story_id, ordering: {[Op.gt]: row.ordering}}}).catch(catcher);
     await db.storysection.destroy({where: {id: req.query.id}}).catch(catcher);
-    const storysections = await fullFetch(db, "storysections", row.story_id);
+    const storysections = await fullFetch(db, "storysection", row.story_id);
     return res.json({id: row.id, parent_id: row.story_id, storysections});
   });
 
