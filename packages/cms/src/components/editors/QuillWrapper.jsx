@@ -6,6 +6,7 @@ if (typeof window !== "undefined") {
   Quill = require("react-quill");
   require("react-quill/dist/quill.snow.css");
   require("quill-mention");
+  require("quill-mention/dist/quill.mention.css");
 }
 
 class QuillWrapper extends Component {
