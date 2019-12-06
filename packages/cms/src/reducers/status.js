@@ -48,7 +48,11 @@ export default (status = {}, action) => {
     // Creation Detection
     case "PROFILE_NEW": 
       return Object.assign({}, status, {justCreated: {type: "profile", id: action.data.id}});
+    case "PROFILE_DUPLICATE": 
+      return Object.assign({}, status, {justCreated: {type: "profile", id: action.data.id}});
     case "SECTION_NEW": 
+      return Object.assign({}, status, {justCreated: {type: "section", id: action.data.id, profile_id: action.data.profile_id}});
+    case "SECTION_DUPLICATE": 
       return Object.assign({}, status, {justCreated: {type: "section", id: action.data.id, profile_id: action.data.profile_id}});
     case "STORY_NEW": 
       return Object.assign({}, status, {justCreated: {type: "story", id: action.data.id}});
@@ -67,13 +71,15 @@ export default (status = {}, action) => {
       return Object.assign({}, status, {toolboxDialogOpen: true, forceID: action.data.id, forceType: "selector", forceOpen: true});
     case "SELECTOR_UPDATE": 
       return Object.assign({}, status, {toolboxDialogOpen: false, forceID: false, forceType: false, forceOpen: false});
+    case "SELECTOR_DELETE": 
+      return Object.assign({}, status, {toolboxDialogOpen: false, forceID: false, forceType: false, forceOpen: false});
     case "FORMATTER_NEW": 
       return Object.assign({}, status, {toolboxDialogOpen: true, forceID: action.data.id, forceType: "formatter", forceOpen: true});
     // Updating a formatter means that some formatter logic changed. Bump the diffcounter.
     case "FORMATTER_UPDATE": 
       return Object.assign({}, status, {toolboxDialogOpen: false, forceID: false, forceType: false, forceOpen: false, diffCounter: action.diffCounter});
     case "FORMATTER_DELETE": 
-      return Object.assign({}, status, {diffCounter: action.diffCounter});
+      return Object.assign({}, status, {toolboxDialogOpen: false, forceID: false, forceType: false, forceOpen: false, diffCounter: action.diffCounter});
     // Updating variables or saving a section or meta means that anything that depends on variables, such as TextCards 
     // Or the tree, needs to know something changed. Instead of running an expensive stringify on variables,
     // Just increment a counter that the various cards can subscribe to.
@@ -99,9 +105,15 @@ export default (status = {}, action) => {
     case "SECTION_DELETE": 
       return Object.assign({}, status, {justDeleted: {type: "section", id: action.data.id, parent_id: action.data.parent_id}});
     case "GENERATOR_DELETE": 
-      return Object.assign({}, status, {justDeleted: {type: "generator", id: action.data.id, parent_id: action.data.parent_id}});
+      return Object.assign({}, status, {
+        justDeleted: {type: "generator", id: action.data.id, parent_id: action.data.parent_id},
+        toolboxDialogOpen: false, forceID: false, forceType: false, forceOpen: false
+      });
     case "MATERIALIZER_DELETE": 
-      return Object.assign({}, status, {justDeleted: {type: "materializer", id: action.data.id, parent_id: action.data.parent_id}});
+      return Object.assign({}, status, {
+        justDeleted: {type: "materializer", id: action.data.id, parent_id: action.data.parent_id},
+        toolboxDialogOpen: false, forceID: false, forceType: false, forceOpen: false
+      });
     case "STORY_DELETE": 
       return Object.assign({}, status, {justDeleted: {type: "story", id: action.data.id}, currentStoryPid: false});
     case "STORYSECTION_DELETE": 

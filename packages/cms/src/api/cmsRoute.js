@@ -43,6 +43,11 @@ const sectionTypeDir = path.join(__dirname, "../components/sections/");
 
 const cmsCheck = () => process.env.NODE_ENV === "development" || yn(process.env.CANON_CMS_ENABLE);
 
+const stripID = o => {
+  delete o.id;
+  return o;
+};
+
 const isEnabled = (req, res, next) => {
   if (cmsCheck()) return next();
   return res.status(401).send("Not Authorized");
@@ -222,6 +227,7 @@ const sortStoryTree = (db, stories) => {
 const sortProfile = (db, profile) => {
   profile.meta = flatSort(db.profile_meta, profile.meta);
   profile.materializers = flatSort(db.materializer, profile.materializers);
+  profile.sections = flatSort(db.section, profile.sections);
   return profile;
 };
 
@@ -261,6 +267,41 @@ const getSectionTypes = () => {
     if (compName !== "Section") sectionTypes.push(compName);
   });
   return sectionTypes;
+};
+
+const duplicateSection = async(db, oldSection, pid, selectorLookup) => {
+  // Create a new section, but with the new profile id.
+  const newSection = await db.section.create(Object.assign({}, stripID(oldSection), {profile_id: pid}));
+  // Clone language content with new id
+  const newSectionContent = oldSection.content.map(d => Object.assign({}, d, {id: newSection.id}));
+  await db.section_content.bulkCreate(newSectionContent).catch(catcher);
+  // Clone subtitles, descriptions, and stats, AND their content, and vizes and selectors
+  const entities = ["subtitle", "description", "stat", "visualization"];
+  // Only copy selectors if this is a full profile copy, i.e., selectorLookup was provided.
+  if (selectorLookup) entities.push("selector");
+  for (const entity of entities) {
+    const newRows = oldSection[`${entity}s`].map(d => {
+      // If the entity is a selector, replace its selector id with the newly cloned selector (created above in lookup)
+      if (entity === "selector") {
+        const s = d.section_selector;
+        return Object.assign({}, stripID(s), {section_id: newSection.id, selector_id: selectorLookup[s.selector_id]});
+      }
+      // Otherwise, simple overwrite the section id and delete the id as usual
+      else {
+        return Object.assign({}, stripID(d), {section_id: newSection.id});
+      }
+    });
+    for (const newRow of newRows) {
+      // Insert the actual entity row
+      const newEntity = await db[`section_${entity}`].create(newRow).catch(catcher);
+      // If this entity has content, Insert it.
+      if (["subtitle", "description", "stat"].includes(entity)) {
+        const newEntityContent = newRow.content.map(d => Object.assign({}, d, {id: newEntity.id}));
+        await db[`section_${entity}_content`].bulkCreate(newEntityContent).catch(catcher);
+      }
+    }
+  }
+  return newSection.id;
 };
 
 const formatter = (members, data, dimension, level) => {
@@ -664,6 +705,81 @@ module.exports = function(app) {
       rows = section.selectors;
     }
     return res.json({parent_id: original.section_id, selectors: rows});
+  });
+
+  /* DUPLICATES */
+
+  app.post("/api/cms/section/duplicate", isEnabled, async(req, res) => {
+    const {id, pid} = req.body;
+    const reqObj = Object.assign({}, sectionReqFull, {where: {id}});
+    let oldSection = await db.section.findOne(reqObj).catch(catcher);
+    oldSection = oldSection.toJSON();
+    // This section could be added to a different profile. Override its ordering to be the last in the list.
+    const maxFetch = await db.section.findAll({where: {profile_id: pid}, attributes: [[sequelize.fn("max", sequelize.col("ordering")), "max"]], raw: true}).catch(catcher);
+    const ordering = typeof maxFetch[0].max === "number" ? maxFetch[0].max + 1 : 0;
+    oldSection.ordering = ordering;
+    let selectorLookup = null;
+    // If this section is being duplicated in the SAME profile as it came from, we DO want to populate its selectors
+    // (We skip selectors if we jump profiles). Populate a dummy lookup so the selector migration works.
+    if (pid === oldSection.profile_id) {
+      selectorLookup = {};
+      oldSection.selectors.forEach(selector => {
+        selectorLookup[selector.section_selector.selector_id] = selector.section_selector.selector_id;
+      });
+    }
+    const newSectionId = await duplicateSection(db, oldSection, pid, selectorLookup);
+    const newReqObj = Object.assign({}, sectionReqFull, {where: {id: newSectionId}});
+    let newSection = await db.section.findOne(newReqObj).catch(catcher);
+    newSection = newSection.toJSON();
+    newSection = sortSection(db, newSection);
+    newSection.types = getSectionTypes();
+    return res.json(newSection);
+  });
+
+
+
+  app.post("/api/cms/profile/duplicate", isEnabled, async(req, res) => {
+    // Fetch the full tree for the provided ID
+    const reqObj = Object.assign({}, profileReqFull, {where: {id: req.body.id}});
+    let oldProfile = await db.profile.findOne(reqObj).catch(catcher);
+    oldProfile = oldProfile.toJSON();
+    // Make a new Profile
+    const maxFetch = await db.profile.findAll({attributes: [[sequelize.fn("max", sequelize.col("ordering")), "max"]], raw: true}).catch(catcher);
+    const ordering = typeof maxFetch[0].max === "number" ? maxFetch[0].max + 1 : 0;
+    const newProfile = await db.profile.create({ordering}).catch(catcher);
+    // Clone meta with new slugs
+    const newMeta = oldProfile.meta.map(d => Object.assign({}, stripID(d), {profile_id: newProfile.id, slug: `${d.slug}-${newProfile.id}`}));
+    await db.profile_meta.bulkCreate(newMeta).catch(catcher);
+    // Clone language content with new id
+    const newProfileContent = oldProfile.content.map(d => Object.assign({}, d, {id: newProfile.id}));
+    await db.profile_content.bulkCreate(newProfileContent).catch(catcher);
+    // Clone generators, materializers
+    for (const table of ["generator", "materializer"]) {
+      const newRows = oldProfile[`${table}s`].map(d => Object.assign({}, stripID(d), {profile_id: newProfile.id}));
+      await db[table].bulkCreate(newRows).catch(catcher);
+    }
+    // Profile-level selectors are being cloned, and will receive a new id. When we later clone section_selector, it will need
+    // to have its selector_id updated to the NEWLY created selector's id. Create a lookup object for this.
+    const selectorLookup = {};
+    for (const oldSelector of oldProfile.selectors) {
+      const oldid = oldSelector.id;
+      const newSelector = await db.selector.create(Object.assign({}, stripID(oldSelector), {profile_id: newProfile.id})).catch(catcher);
+      selectorLookup[oldid] = newSelector.id;
+    }
+    // Clone Sections
+    for (const oldSection of oldProfile.sections) {
+      await duplicateSection(db, oldSection, newProfile.id, selectorLookup);
+    }
+    // Now that all the creations are complete, fetch a new hierarchical and sorted profile.
+    const finalReqObj = Object.assign({}, profileReqFull, {where: {id: newProfile.id}});
+    let finalProfile = await db.profile.findOne(finalReqObj).catch(catcher);
+    finalProfile = sortProfile(db, finalProfile.toJSON()); 
+    finalProfile.sections = finalProfile.sections.map(section => {
+      section = sortSection(db, section);
+      section.types = getSectionTypes();
+      return section;
+    });
+    return res.json(finalProfile);
   });
 
   /* DELETES */
