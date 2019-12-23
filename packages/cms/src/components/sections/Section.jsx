@@ -278,7 +278,7 @@ class Section extends Component {
       resetButton,
       visualizations: contents.position !== "sticky" ? visualizations : [],
       vizHeadingLevel: `h${parseInt(headingLevel.replace("h", ""), 10) + 1}`,
-      hideOptions,
+      hideOptions: hideOptions || contents.optionsVisible === false,
       loading
     };
 
