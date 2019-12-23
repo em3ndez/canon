@@ -19,7 +19,8 @@ class VisualizationEditorUI extends Component {
     this.state = {
       object: {},
       rebuildAlertOpen: false,
-      payload: []
+      payload: [],
+      optionsVisible: true
     };
   }
 
@@ -211,6 +212,12 @@ class VisualizationEditorUI extends Component {
     }
   }
 
+  /** whether to show the options button group */
+  onToggleOptions() {
+    this.setState({optionsVisible: !this.state.optionsVisible});
+    console.log("Hook me up Jimmy");
+  }
+
   onChangeFormatter(field, e) {
     const {object} = this.state;
     if (!object.formatters) object.formatters = {};
@@ -335,7 +342,7 @@ class VisualizationEditorUI extends Component {
 
   render() {
     const {modeSwitcher} = this.props;
-    const {object, rebuildAlertOpen, payload} = this.state;
+    const {object, optionsVisible, rebuildAlertOpen, payload} = this.state;
     const {localeDefault} = this.props.status;
     const {formatterFunctions} = this.props.resources;
     const formatters = formatterFunctions[localeDefault];
@@ -360,16 +367,6 @@ class VisualizationEditorUI extends Component {
     }
 
     return <div className="cms-viz-editor">
-      <Alert
-        title="Rebuild visualization using new data URL?"
-        cancelButtonText="Cancel"
-        confirmButtonText="Rebuild"
-        className="confirm-alert"
-        isOpen={rebuildAlertOpen}
-        onConfirm={this.rebuild.bind(this)}
-        onCancel={() => this.setState({rebuildAlertOpen: false})}
-      />
-
       {/* data URL */}
       <TextButtonGroup
         namespace="cms"
@@ -406,10 +403,22 @@ class VisualizationEditorUI extends Component {
         />
       </div>
 
-      {/* mode switcher & additional viz options */}
-      <div className="viz-select-group u-margin-top-xs">
+      {/* viz options button group & mode switcher */}
+      <div className="cms-field-group u-margin-top-off u-margin-bottom-off">
+        <label className="cms-checkbox-label u-font-xs u-margin-bottom-off">
+          <input
+            className="cms-checkbox"
+            type="checkbox"
+            onChange={() => this.onToggleOptions()}
+            checked={optionsVisible}
+          /> Data/share/save buttons
+        </label>
 
         {modeSwitcher}
+      </div>
+
+      {/* additional viz configuration */}
+      <div className="viz-select-group u-margin-top-off">
 
         {payload.length > 0 && object.type && thisViz && thisViz.methods.map(method =>
           // render prop as text input
@@ -470,6 +479,16 @@ class VisualizationEditorUI extends Component {
               </Fragment>
         )}
       </div>
+
+      <Alert
+        title="Rebuild visualization using new data URL?"
+        cancelButtonText="Cancel"
+        confirmButtonText="Rebuild"
+        className="confirm-alert"
+        isOpen={rebuildAlertOpen}
+        onConfirm={this.rebuild.bind(this)}
+        onCancel={() => this.setState({rebuildAlertOpen: false})}
+      />
     </div>;
   }
 }

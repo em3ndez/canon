@@ -9,6 +9,13 @@
     top: -1.125rem !important;
   }
 
+  & .cms-field-group > .cms-checkbox-label + .cms-variable-editor-switcher {
+    position: relative;
+    text-align: right;
+    margin-top: 1.5em;
+    margin-bottom: 0;
+  }
+
   /* groupBy, x, y, etc. (hidden until a Data & Type are entered) */
   & .viz-select-group {
     display: flex;
