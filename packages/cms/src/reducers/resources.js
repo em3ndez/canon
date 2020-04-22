@@ -7,7 +7,7 @@ const funcifyFormatterByLocale = require("../utils/funcifyFormatterByLocale");
 export default (resources = {}, action) => {
   const formatterFunctions = {};
   switch (action.type) {
-    case "FORMATTER_GET": 
+    case "FORMATTERS_GET": 
       action.locales.forEach(locale => {
         formatterFunctions[locale] = funcifyFormatterByLocale(action.data, locale);
       });

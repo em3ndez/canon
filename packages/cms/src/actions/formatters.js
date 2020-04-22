@@ -7,7 +7,7 @@ export function getFormatters() {
     const locales = getLocales(getStore().env);
     return axios.get(`${getStore().env.CANON_API}/api/cms/formatter`)
       .then(({data}) => {
-        dispatch({type: "FORMATTER_GET", data, locales});
+        dispatch({type: "FORMATTERS_GET", data, locales});
       });
   };
 }

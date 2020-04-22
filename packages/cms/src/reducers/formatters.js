@@ -1,6 +1,6 @@
 export default (formatters = [], action) => {
   switch (action.type) {
-    case "FORMATTER_GET": 
+    case "FORMATTERS_GET": 
       return action.data;
     case "FORMATTER_NEW":
       return formatters.concat([action.data]);
