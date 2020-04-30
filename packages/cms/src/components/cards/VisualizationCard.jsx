@@ -18,6 +18,8 @@ import {setStatus} from "../../actions/status";
 
 import "./VisualizationCard.css";
 
+const same = (d1, d2) => d1 && d2 && d1.type === d2.type && d1.id === d2.id;
+
 class VisualizationCard extends Component {
   constructor(props) {
     super(props);
@@ -46,7 +48,6 @@ class VisualizationCard extends Component {
         Toast.show({icon: "saved", intent: Intent.SUCCESS, message: "Saved!", timeout: 1000});
         // Clone the new object for manipulation in state.
         this.setState({isOpen: false, minData: deepClone(this.props.minData)});
-        this.props.setStatus({dialogOpen: false});
       }
       else if (status === "ERROR") {
         Toast.show({icon: "error", intent: Intent.DANGER, message: "Error: Not Saved!", timeout: 3000});
@@ -54,7 +55,7 @@ class VisualizationCard extends Component {
       }
     }
 
-    const somethingOpened = !prevProps.status.dialogOpen && this.props.status.dialogOpen && this.props.status.dialogOpen.force;
+    const somethingOpened = this.props.status.dialogOpen && !same(prevProps.status.dialogOpen, this.props.status.dialogOpen) && this.props.status.dialogOpen.force;
     const thisOpened = somethingOpened && this.props.status.dialogOpen.type === type && this.props.status.dialogOpen.id === this.props.minData.id;
     if (thisOpened) {
       this.openEditor.bind(this)();
@@ -75,11 +76,11 @@ class VisualizationCard extends Component {
     this.props.deleteEntity(type, {id: minData.id});
   }
 
-  save() {
+  save(jump) {
     const {type} = this.props;
     const {minData} = this.state;
     // note: isOpen will close on update success (see componentDidUpdate)
-    this.props.updateEntity(type, minData);
+    this.props.updateEntity(type, minData, jump);
   }
 
   openEditor() {
@@ -181,12 +182,15 @@ class VisualizationCard extends Component {
       };
     }
 
+    const showJump = this.props.status.previousDialog && !same(this.props.status.previousDialog, this.props.status.dialogOpen);
+
     const dialogProps = {
       title: "Visualization editor",
       isOpen,
       onClose: this.maybeCloseEditorWithoutSaving.bind(this),
       onDelete: this.maybeDelete.bind(this),
       onSave: this.save.bind(this),
+      onSaveJump: showJump ? this.save.bind(this, true) : null,
       usePortal: false,
       portalProps: {namespace: "cms"}
     };
@@ -225,7 +229,7 @@ const mapStateToProps = state => ({
 });
 
 const mapDispatchToProps = dispatch => ({
-  updateEntity: (type, payload) => dispatch(updateEntity(type, payload)),
+  updateEntity: (type, payload, jump) => dispatch(updateEntity(type, payload, jump)),
   deleteEntity: (type, payload) => dispatch(deleteEntity(type, payload)),
   setStatus: status => dispatch(setStatus(status))
 });

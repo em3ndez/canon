@@ -24,6 +24,8 @@ import {setStatus} from "../../actions/status";
 
 import "./TextCard.css";
 
+const same = (d1, d2) => d1 && d2 && d1.type === d2.type && d1.id === d2.id;
+
 class TextCard extends Component {
   constructor(props) {
     super(props);
@@ -74,7 +76,7 @@ class TextCard extends Component {
       }
     }
 
-    const somethingOpened = !prevProps.status.dialogOpen && this.props.status.dialogOpen && this.props.status.dialogOpen.force;
+    const somethingOpened = this.props.status.dialogOpen && !same(prevProps.status.dialogOpen, this.props.status.dialogOpen) && this.props.status.dialogOpen.force;
     const thisOpened = somethingOpened && this.props.status.dialogOpen.type === type && this.props.status.dialogOpen.id === this.props.minData.id;
     if (thisOpened) {
       this.openEditor.bind(this)();
@@ -180,7 +182,7 @@ class TextCard extends Component {
     this.setState({primaryDisplayData, secondaryDisplayData});
   }
 
-  save() {
+  save(jump) {
     const {type, fields, plainFields, hideAllowed} = this.props;
     const {localeDefault, localeSecondary} = this.props.status;
     const {minData} = this.state;
@@ -205,7 +207,7 @@ class TextCard extends Component {
     if (!hideAllowed) payload.allowed = minData.allowed;
     payload.content = localeSecondary ? [primaryLocale, secondaryLocale] : [primaryLocale];
     // note: isOpen will close on update success (see componentDidUpdate)
-    this.props.updateEntity(type, payload);
+    this.props.updateEntity(type, payload, jump);
   }
 
   maybeDelete() {
@@ -318,6 +320,8 @@ class TextCard extends Component {
       onAlertCancel: () => this.setState({alertObj: false})
     };
 
+    const showJump = this.props.status.previousDialog && !same(this.props.status.previousDialog, this.props.status.dialogOpen);
+
     const dialogProps = {
       className: "cms-text-editor-dialog",
       isOpen,
@@ -326,6 +330,7 @@ class TextCard extends Component {
       usePortal: false,
       onDelete: entityList.includes(type) ? false : this.maybeDelete.bind(this),
       onSave: this.save.bind(this),
+      onSaveJump: showJump ? this.save.bind(this, true) : null,
       portalProps: {namespace: "cms"}
     };
 
@@ -436,7 +441,7 @@ const mapStateToProps = state => ({
 });
 
 const mapDispatchToProps = dispatch => ({
-  updateEntity: (type, payload) => dispatch(updateEntity(type, payload)),
+  updateEntity: (type, payload, jump) => dispatch(updateEntity(type, payload, jump)),
   deleteEntity: (type, payload) => dispatch(deleteEntity(type, payload)),
   setStatus: status => dispatch(setStatus(status))
 });

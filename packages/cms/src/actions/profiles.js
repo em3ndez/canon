@@ -106,7 +106,7 @@ export function newEntity(type, payload) {
 }
 
 /** */
-export function updateEntity(type, payload) { 
+export function updateEntity(type, payload, jump) { 
   return function(dispatch, getStore) {
     dispatch({type: "CLEAR_UPDATED"});
     // Updates might need to trigger re-running certain displays. Use diffCounter to track changes
@@ -116,7 +116,7 @@ export function updateEntity(type, payload) {
     return axios.post(`${getStore().env.CANON_API}/api/cms/${type}/update`, payload)
       .then(resp => {
         if (resp.status === 200) {
-          dispatch({type: `${type.toUpperCase()}_UPDATE`, data: resp.data, diffCounter, locales});
+          dispatch({type: `${type.toUpperCase()}_UPDATE`, data: resp.data, diffCounter, locales, jump});
         }
         else {
           dispatch({type: `${type.toUpperCase()}_ERROR`, data: {id: payload.id}});

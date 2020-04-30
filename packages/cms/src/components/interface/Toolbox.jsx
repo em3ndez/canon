@@ -72,11 +72,12 @@ class Toolbox extends Component {
 
   filterFunc(d) {
     const {query} = this.state;
-    const {dialogOpen} = this.props.status;
+    const {dialogOpen, previousDialog} = this.props.status;
     const fields = ["name", "description", "title"];
     const matched = fields.map(f => d[f] !== undefined ? d[f].toLowerCase().includes(query) : false).some(d => d);
     const opened = dialogOpen && d.type === dialogOpen.type && d.id === dialogOpen.id;
-    return matched || opened;
+    const prevOpened = previousDialog && d.type === previousDialog.type && d.id === previousDialog.id;
+    return matched || opened || prevOpened;
   }
 
   openGenerator(key) {
@@ -104,7 +105,7 @@ class Toolbox extends Component {
     const {children, toolboxVisible} = this.props;
     const {profile} = this.props;
     const formattersAll = this.props.formatters;
-    const {variables, localeDefault, localeSecondary, dialogOpen} = this.props.status;
+    const {variables, localeDefault, localeSecondary, dialogOpen, previousDialog} = this.props.status;
 
     const dataLoaded = profile;
 
@@ -126,7 +127,7 @@ class Toolbox extends Component {
       .sort((a, b) => a.name.localeCompare(b.name))
       .map(d => Object.assign({}, {type: "generator"}, d))
       .filter(this.filterFunc.bind(this))
-      .filter(d => !dialogOpen || dialogOpen.type === "generator" && dialogOpen.id === d.id);
+      .filter(d => !dialogOpen || (dialogOpen.type === "generator" && dialogOpen.id === d.id || previousDialog && previousDialog.type === "generator" && previousDialog.id === d.id));
 
     if (this.props.status.profilesLoaded) generators = [attrGen].concat(generators);
 
@@ -134,17 +135,18 @@ class Toolbox extends Component {
       .sort((a, b) => a.ordering - b.ordering)
       .map(d => Object.assign({}, {type: "materializer"}, d))
       .filter(this.filterFunc.bind(this))
-      .filter(d => !dialogOpen || dialogOpen.type === "materializer" && dialogOpen.id === d.id);
+      .filter(d => !dialogOpen || (dialogOpen.type === "materializer" && dialogOpen.id === d.id || previousDialog && previousDialog.type === "materializer" && previousDialog.id === d.id));
 
     const formatters = formattersAll
       .sort((a, b) => a.name.localeCompare(b.name))
       .filter(this.filterFunc.bind(this))
-      .filter(d => !dialogOpen || dialogOpen.type === "formatter" && dialogOpen.id === d.id);
+      .filter(d => !dialogOpen || (dialogOpen.type === "formatter" && dialogOpen.id === d.id || previousDialog && previousDialog.type === "formatter" && previousDialog.id === d.id));
 
     const selectors = profile.selectors
       .sort((a, b) => a.title.localeCompare(b.title))
       .filter(this.filterFunc.bind(this))
-      .filter(d => !dialogOpen || dialogOpen.type === "selector" && dialogOpen.id === d.id);
+      .filter(d => !dialogOpen || (dialogOpen.type === "selector" && dialogOpen.id === d.id || previousDialog && previousDialog.type === "selector" && previousDialog.id === d.id));
+      
 
     // If a search filter causes no results, hide the entire grouping. However, if
     // the ORIGINAL data has length 0, always show it, so the user can add the first one.

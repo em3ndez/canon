@@ -17,6 +17,8 @@ import {setStatus} from "../../actions/status";
 
 import "./VariableCard.css";
 
+const same = (d1, d2) => d1 && d2 && d1.type === d2.type && d1.id === d2.id;
+
 class VariableCard extends Component {
   constructor(props) {
     super(props);
@@ -51,6 +53,7 @@ class VariableCard extends Component {
         Toast.show({icon: "saved", intent: Intent.SUCCESS, message: "Saved!", timeout: 1000});
         // If a gen/mat was saved, re-run fetchvariables for just this one gen/mat.
         if (type === "generator" || type === "materializer") {
+          console.log("fetching");
           const config = {type, id: minData.id};
           this.props.fetchVariables(config);
         }
@@ -71,7 +74,7 @@ class VariableCard extends Component {
       if (variablesChanged) this.formatDisplay.bind(this)();
     }
 
-    const somethingOpened = !prevProps.status.dialogOpen && this.props.status.dialogOpen && this.props.status.dialogOpen.force;
+    const somethingOpened = this.props.status.dialogOpen && !same(prevProps.status.dialogOpen, this.props.status.dialogOpen) && this.props.status.dialogOpen.force;
     const thisOpened = somethingOpened && this.props.status.dialogOpen.type === type && this.props.status.dialogOpen.id === id;
     if (thisOpened) {
       this.openEditor.bind(this)();
@@ -131,11 +134,11 @@ class VariableCard extends Component {
     this.props.deleteEntity(type, {id});
   }
 
-  save() {
+  save(jump) {
     const {type} = this.props;
     const {minData} = this.state;
     // note: isOpen will close on update success (see componentDidUpdate)
-    this.props.updateEntity(type, minData);
+    this.props.updateEntity(type, minData, jump);
   }
 
   openEditor() {
@@ -194,6 +197,8 @@ class VariableCard extends Component {
       title: "•••" // placeholder
     };
 
+    const showJump = this.props.status.previousDialog && !same(this.props.status.previousDialog, this.props.status.dialogOpen);
+
     const dialogProps = {
       className: "cms-variable-editor-dialog",
       title: `${upperCaseFirst(type)} editor`,
@@ -201,6 +206,7 @@ class VariableCard extends Component {
       onClose: this.maybeCloseEditorWithoutSaving.bind(this),
       onDelete: this.maybeDelete.bind(this),
       onSave: this.save.bind(this),
+      onSaveJump: showJump ? this.save.bind(this, true) : null,
       usePortal: false,
       icon: false,
       portalProps: {namespace: "cms"}
@@ -286,7 +292,7 @@ const mapStateToProps = state => ({
 });
 
 const mapDispatchToProps = dispatch => ({
-  updateEntity: (type, payload) => dispatch(updateEntity(type, payload)),
+  updateEntity: (type, payload, jump) => dispatch(updateEntity(type, payload, jump)),
   deleteEntity: (type, payload) => dispatch(deleteEntity(type, payload)),
   fetchVariables: config => dispatch(fetchVariables(config)),
   setStatus: status => dispatch(setStatus(status))

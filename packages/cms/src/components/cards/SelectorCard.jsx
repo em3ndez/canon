@@ -17,6 +17,8 @@ import {setStatus} from "../../actions/status";
 
 import "./SelectorCard.css";
 
+const same = (d1, d2) => d1 && d2 && d1.type === d2.type && d1.id === d2.id;
+
 /**
  * Card Component for displaying dropdown selectors. Selectors may be singular dropdowns
  * or multiselects
@@ -58,7 +60,7 @@ class SelectorCard extends Component {
       }
     }
 
-    const somethingOpened = !prevProps.status.dialogOpen && this.props.status.dialogOpen && this.props.status.dialogOpen.force;
+    const somethingOpened = this.props.status.dialogOpen && !same(prevProps.status.dialogOpen, this.props.status.dialogOpen) && this.props.status.dialogOpen.force;
     const thisOpened = somethingOpened && this.props.status.dialogOpen.type === type && this.props.status.dialogOpen.id === id;
     if (thisOpened) {
       this.openEditor.bind(this)();
@@ -70,11 +72,11 @@ class SelectorCard extends Component {
     if (!isDirty) this.setState({isDirty: true});
   }
 
-  save() {
+  save(jump) {
     const {minData} = this.state;
     const {type} = this.props;
     // note: isOpen will close on update success (see componentDidUpdate)
-    this.props.updateEntity(type, minData);
+    this.props.updateEntity(type, minData, jump);
   }
 
   maybeDelete() {
@@ -165,6 +167,8 @@ class SelectorCard extends Component {
       );
     }
 
+    const showJump = this.props.status.previousDialog && !same(this.props.status.previousDialog, this.props.status.dialogOpen);
+
     const dialogProps = {
       className: "variable-editor-dialog",
       title: "Selector Editor",
@@ -172,6 +176,7 @@ class SelectorCard extends Component {
       onClose: this.maybeCloseEditorWithoutSaving.bind(this),
       onDelete: this.maybeDelete.bind(this),
       onSave: this.save.bind(this),
+      onSaveJump: showJump ? this.save.bind(this, true) : null,
       portalProps: {namespace: "cms"}
     };
 
@@ -233,7 +238,7 @@ const mapStateToProps = state => ({
 });
 
 const mapDispatchToProps = dispatch => ({
-  updateEntity: (type, payload) => dispatch(updateEntity(type, payload)),
+  updateEntity: (type, payload, jump) => dispatch(updateEntity(type, payload, jump)),
   deleteEntity: (type, payload) => dispatch(deleteEntity(type, payload)),
   setStatus: status => dispatch(setStatus(status))
 });

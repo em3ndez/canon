@@ -46,6 +46,7 @@ class Dialog extends Component {
       onClose,        // close the dialog
       onDelete,       // callback function passed to DialogFooter.jsx
       onSave,         // callback function passed to DialogFooter.jsx
+      onSaveJump,     // callback function passed to DialogFooter.jsx
       headerControls, // additional controls rendered in the header
       footerControls, // additional controls rendered in the footer
       title,          // dialog title
@@ -96,7 +97,7 @@ class Dialog extends Component {
 
             {/* footer buttons */}
             {showFooter &&
-              <DialogFooter onSave={onSave} onDelete={onDelete} key="f">
+              <DialogFooter onSave={onSave} onSaveJump={onSaveJump} onDelete={onDelete} key="f">
                 {footerControls}
               </DialogFooter>
             }

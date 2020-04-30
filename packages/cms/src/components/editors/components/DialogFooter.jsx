@@ -8,7 +8,7 @@ import "./DialogFooter.css";
 class DialogFooter extends Component {
 
   render() {
-    const {children, onDelete, onSave} = this.props;
+    const {children, onDelete, onSave, onSaveJump} = this.props;
 
     return (
       <div className="cms-dialog-footer">
@@ -26,6 +26,19 @@ class DialogFooter extends Component {
           >
             Delete
           </Button>
+        }
+
+        {onSaveJump && <Button
+          className="cms-dialog-footer-button cms-dialog-footer-save-button"
+          onClick={onSaveJump}
+          namespace="cms"
+          fontSize="xs"
+          icon="document-open"
+          iconPosition="left"
+          key="j"
+        >
+          Save & Open Previous
+        </Button>
         }
 
         <Button

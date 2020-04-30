@@ -33,14 +33,22 @@ const extractVariables = (obj, variablesUsed = []) => {
 };
 */
 
+const same = (d1, d2) => d1 && d2 && d1.type === d2.type && d1.id === d2.id;
+
 export default (status = {}, action) => {
   
   const success = action && action.data && action.data.id ? {id: action.data.id, status: "SUCCESS"} : {};
   const error = action && action.data && action.data.id ? {id: action.data.id, status: "ERROR"} : {};
+  const previousDialog = !same(status.previousDialog, status.dialogOpen) ? {...status.dialogOpen, force: true} : previousDialog;
   
   switch (action.type) {
     // Basic assign
     case "STATUS_SET": 
+      if (action.data.dialogOpen !== undefined && action.data.dialogOpen === false) {
+        if (!same(action.data.previousDialog, status.dialogOpen)) {
+          action.data.previousDialog = {...status.dialogOpen, force: true};
+        }
+      }
       return Object.assign({}, status, action.data);
     // Report loading completion of stories and profiles
     case "PROFILES_GET":
@@ -66,22 +74,24 @@ export default (status = {}, action) => {
     case "GENERATOR_NEW": 
       return Object.assign({}, status, {dialogOpen: {type: "generator", id: action.data.id, force: true}});
     case "GENERATOR_UPDATE": 
-      return Object.assign({}, status, {dialogOpen: false, justUpdated: {type: "generator", ...success}});
+      console.log("got to generator update");
+      console.log({dialogOpen: action.jump === true ? status.previousDialog : false, previousDialog, justUpdated: {type: "generator", ...success}});
+      return Object.assign({}, status, {dialogOpen: action.jump === true ? status.previousDialog : false, previousDialog, justUpdated: {type: "generator", ...success}});
     case "MATERIALIZER_NEW": 
       return Object.assign({}, status, {dialogOpen: {type: "materializer", id: action.data.id, force: true}});
     case "MATERIALIZER_UPDATE": 
-      return Object.assign({}, status, {dialogOpen: false, justUpdated: {type: "materializer", ...success}});
+      return Object.assign({}, status, {dialogOpen: action.jump === true ? status.previousDialog : false, previousDialog, justUpdated: {type: "materializer", ...success}});
     case "SELECTOR_NEW": 
       return Object.assign({}, status, {dialogOpen: {type: "selector", id: action.data.id, force: true}});
     case "SELECTOR_UPDATE": 
-      return Object.assign({}, status, {dialogOpen: false, justUpdated: {type: "selector", ...success}});
+      return Object.assign({}, status, {dialogOpen: action.jump === true ? status.previousDialog : false, previousDialog, justUpdated: {type: "selector", ...success}});
     case "SELECTOR_DELETE": 
       return Object.assign({}, status, {dialogOpen: false});
     case "FORMATTER_NEW": 
       return Object.assign({}, status, {dialogOpen: {type: "formatter", id: action.data.id, force: true}});
     // Updating a formatter means that some formatter logic changed. Bump the diffcounter.
     case "FORMATTER_UPDATE": 
-      return Object.assign({}, status, {dialogOpen: false, diffCounter: action.diffCounter, justUpdated: {type: "formatter", ...success}});
+      return Object.assign({}, status, {dialogOpen: action.jump === true ? status.previousDialog : false, previousDialog, diffCounter: action.diffCounter, justUpdated: {type: "formatter", ...success}});
     case "FORMATTER_DELETE": 
       return Object.assign({}, status, {dialogOpen: false, diffCounter: action.diffCounter});
     case "VARIABLES_FETCH":
@@ -97,7 +107,7 @@ export default (status = {}, action) => {
       return Object.assign({}, status, newStatus);
     // Updating sections could mean the title was updated. Bump a "diffcounter" that the Navbar tree can listen for to jigger a render
     case "SECTION_UPDATE": 
-      return Object.assign({}, status, {diffCounter: action.diffCounter, justUpdated: {type: "section", ...success}});
+      return Object.assign({}, status, {dialogOpen: action.jump === true ? status.previousDialog : false, previousDialog, diffCounter: action.diffCounter, justUpdated: {type: "section", ...success}});
     // When the user adds a new dimension, set a status that we are waiting for members to finish populating
     case "SEARCH_LOADING": 
       return Object.assign({}, status, {searchLoading: true});
@@ -153,10 +163,11 @@ export default (status = {}, action) => {
     // When an update attempt starts, clear the justUpdated variable, which will then be refilled with SUCCESS or ERROR.
     // This is to ensure that subsequent error messages freshly fire, even if they are the "same" error
     case "CLEAR_UPDATED": 
+      console.log("got to clear updated");
       return Object.assign({}, status, {justUpdated: false});
     // Note: some of the update events occur above
     case "PROFILE_UPDATE":
-      return Object.assign({}, status, {justUpdated: {type: "profile", ...success}});
+      return Object.assign({}, status, {dialogOpen: action.jump === true ? status.previousDialog : false, previousDialog, justUpdated: {type: "profile", ...success}});
     case "PROFILE_ERROR":
       return Object.assign({}, status, {justUpdated: {type: "profile", ...error}});
     case "SECTION_ERROR":
@@ -170,19 +181,19 @@ export default (status = {}, action) => {
     case "SELECTOR_ERROR":
       return Object.assign({}, status, {justUpdated: {type: "selector", ...error}});
     case "SECTION_SUBTITLE_UPDATE":
-      return Object.assign({}, status, {dialogOpen: false, justUpdated: {type: "section_subtitle", ...success}});
+      return Object.assign({}, status, {dialogOpen: action.jump === true ? status.previousDialog : false, previousDialog, justUpdated: {type: "section_subtitle", ...success}});
     case "SECTION_SUBTITLE_ERROR":
       return Object.assign({}, status, {justUpdated: {type: "section_subtitle", ...error}});
     case "SECTION_STAT_UPDATE":
-      return Object.assign({}, status, {dialogOpen: false, justUpdated: {type: "section_stat", ...success}});
+      return Object.assign({}, status, {dialogOpen: action.jump === true ? status.previousDialog : false, previousDialog, justUpdated: {type: "section_stat", ...success}});
     case "SECTION_STAT_ERROR":
       return Object.assign({}, status, {justUpdated: {type: "section_stat", ...error}});
     case "SECTION_DESCRIPTION_UPDATE":
-      return Object.assign({}, status, {dialogOpen: false, justUpdated: {type: "section_description", ...success}});
+      return Object.assign({}, status, {dialogOpen: action.jump === true ? status.previousDialog : false, previousDialog, justUpdated: {type: "section_description", ...success}});
     case "SECTION_DESCRIPTION_ERROR":
       return Object.assign({}, status, {justUpdated: {type: "section_description", ...error}});
     case "SECTION_VISUALIZATION_UPDATE":
-      return Object.assign({}, status, {dialogOpen: false, justUpdated: {type: "section_visualization", ...success}});
+      return Object.assign({}, status, {dialogOpen: action.jump === true ? status.previousDialog : false, previousDialog, justUpdated: {type: "section_visualization", ...success}});
     case "SECTION_VISUALIZATION_ERROR":
       return Object.assign({}, status, {justUpdated: {type: "section_visualization", ...error}});
     default: return status;
