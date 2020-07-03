@@ -1,15 +1,15 @@
 import React from "react";
+import {hot} from "react-hot-loader/root";
 import {Vizbuilder} from "../../src";
 import * as params from "../params/chilecracia";
 
-function Chilecracia(props) {
-  return (
-    <div className="chilecracia">
-      <Vizbuilder
-        {...params}
-      />
-    </div>
-  );
-}
+const HotVizbuilder = hot(Vizbuilder);
+
+const Chilecracia = () =>
+  <div className="chilecracia">
+    <HotVizbuilder
+      {...params}
+    />
+  </div>;
 
 export default Chilecracia;

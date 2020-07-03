@@ -1,6 +1,9 @@
 import React, {Component} from "react";
+import {hot} from "react-hot-loader/root";
 import {Vizbuilder} from "../../src/index";
 import * as params from "../params/datausa/viz";
+
+const HotVizbuilder = hot(Vizbuilder);
 
 class DataUSAViz extends Component {
   state = {
@@ -21,15 +24,11 @@ class DataUSAViz extends Component {
   }
 
   render() {
-    return this.state.intro ? (
-      <div className="visualize">
-        <button onClick={this.activate}>Activate</button>
-      </div>
-    ) : (
-      <div className="visualize">
-        <Vizbuilder {...params} />
-      </div>
-    );
+    return <div className="visualize">
+      { this.state.intro
+        ? <button onClick={this.activate}>Activate</button>
+        : <HotVizbuilder {...params} />}
+    </div>;
   }
 }
 
